@@ -12,7 +12,6 @@ import org.pmw.tinylog.Logger;
 
 import com.github.javaparser.JavaParser;
 import com.github.javaparser.symbolsolver.JavaSymbolSolver;
-import com.github.javaparser.symbolsolver.model.resolution.TypeSolver;
 import com.github.javaparser.symbolsolver.resolution.typesolvers.CombinedTypeSolver;
 import com.github.javaparser.symbolsolver.resolution.typesolvers.JarTypeSolver;
 import com.github.javaparser.symbolsolver.resolution.typesolvers.JavaParserTypeSolver;
@@ -66,19 +65,19 @@ public class CollectionsExplorer implements Callable<Void> {
 	 */
 	@Option(arity = "0", names = {"-var" }, paramLabel = "var", 
 			description = "Analyze every variable declaration that matches the filter.")
-	private boolean inspectVarDeclaration;
+	private boolean inspectVarDeclaration = false;
 
 	@Option(arity = "0", names = {"-new" }, paramLabel = "new", 
 			description = "Analyze every object instantiation that matches the filter.")
-	private boolean inspectObjCreation;
+	private boolean inspectObjCreation = false;
 
 	@Option(arity = "0", names = {"-import" }, paramLabel = "import", 
 			description = "Analyze every import declaration that matches the filter.")
-	private boolean inspectImportDeclaration;
+	private boolean inspectImportDeclaration = false;
 
 	@Option(arity = "0", names = {"-stream" }, paramLabel = "stream", 
 			description = "Analyze every stream methods	 declaration using the filter.")
-	private boolean inspectStreamMethodDeclaration;
+	private boolean inspectStreamMethodDeclaration = false;
 	
 	/**
 	 * TYPE SOLVER PARAMETERS
@@ -124,10 +123,9 @@ public class CollectionsExplorer implements Callable<Void> {
 				filesList.addAll(FileTraverser.visitAllDirsAndFiles(dir, JAVA_EXTENSION));
 
 				CombinedTypeSolver solver = new CombinedTypeSolver(
-						//new JavaParserTypeSolver(dir), // Needs an accurate root directory THIS IS VERY SLOW
+						new JavaParserTypeSolver(dir), // Needs an accurate root directory THIS IS VERY SLOW
 						new ReflectionTypeSolver());   // Works for types we also use here (java.util, java.lang...)
 
-				
 				
 				if(jarFile != null) {
 					solver.add(new JarTypeSolver(jarFile));

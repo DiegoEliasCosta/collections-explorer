@@ -7,16 +7,10 @@ import java.util.stream.Collectors;
 
 import org.pmw.tinylog.Logger;
 
-import com.github.javaparser.JavaParser;
-import com.github.javaparser.ast.Node;
-import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.expr.Expression;
 import com.github.javaparser.ast.expr.MethodCallExpr;
-import com.github.javaparser.ast.expr.ObjectCreationExpr;
 import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
 import com.github.javaparser.resolution.types.ResolvedType;
-import com.github.javaparser.symbolsolver.javaparsermodel.JavaParserFacade;
-import com.github.javaparser.symbolsolver.model.resolution.TypeSolver;
 
 import de.heidelberg.collectionsexplorer.Filter;
 import de.heidelberg.collectionsexplorer.beans.StreamOperationsInfo;
