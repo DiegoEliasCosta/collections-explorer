@@ -11,6 +11,8 @@ import lombok.ToString;
 public class StreamOperationsInfo extends GenericInfo {
 	
 	@Getter	@CsvBindByName private String className;
+	@Getter	@CsvBindByName private String packageName;
+	
 	@Getter	@CsvBindByName private int lineNumber;
 	@Getter	@CsvBindByName private int columnNumber;
 	

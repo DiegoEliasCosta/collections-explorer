@@ -68,6 +68,9 @@ public class StreamAPIUsageVisitor extends VoidVisitorAdapter<Result<StreamOpera
 			
 			// Class Name
 			builder.className(ParserUtil.retrieveClass(methodCall));
+			
+			// Package Name
+			builder.packageName(ParserUtil.retrievePackageName(methodCall));
 
 			// Position (line + col)
 			builder.lineNumber(ParserUtil.getLineNumber(methodCall));

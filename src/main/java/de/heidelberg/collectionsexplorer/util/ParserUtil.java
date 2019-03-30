@@ -4,8 +4,11 @@ import java.util.Optional;
 
 import com.github.javaparser.Position;
 import com.github.javaparser.Range;
+import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.Node;
+import com.github.javaparser.ast.PackageDeclaration;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
+import com.github.javaparser.ast.expr.MethodCallExpr;
 import com.github.javaparser.ast.nodeTypes.NodeWithRange;
 
 /**
@@ -47,6 +50,22 @@ public class ParserUtil {
 		}
 		
 		return NO_INFO;
+	}
+
+	public static String retrievePackageName(Node node) {
+		
+		Optional<CompilationUnit> ancestorOfType = node.findAncestor(CompilationUnit.class);
+		
+		if(ancestorOfType.isPresent()) {
+			CompilationUnit packageDeclaration = ancestorOfType.get();
+			
+			Optional<PackageDeclaration> pkg = packageDeclaration.getPackageDeclaration();
+			if(pkg.isPresent()) {
+				return pkg.get().getNameAsString();
+			}
+		}
+		
+		return "";
 	}
 	
 }

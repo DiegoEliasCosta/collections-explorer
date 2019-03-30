@@ -55,6 +55,8 @@ public class StreamAPIUsageTest {
 			assertEquals(listedInfo.get(1), "filter");
 			assertEquals(listedInfo.get(2), "collect");
 
+			assertEquals("de.heidelberg.collectionsexplorer.examples", entries.getPackageName());
+			
 		} catch (Exception e) {
 			assertFalse(true);
 			throw e;
