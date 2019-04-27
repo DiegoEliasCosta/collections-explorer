@@ -5,6 +5,10 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import com.github.javaparser.ast.DataKey;
+import com.github.javaparser.ast.NodeList;
+import com.github.javaparser.ast.type.Type;
+import com.github.javaparser.resolution.declarations.ResolvedMethodDeclaration;
 import org.pmw.tinylog.Logger;
 
 import com.github.javaparser.ast.expr.Expression;
@@ -23,107 +27,127 @@ import de.heidelberg.collectionsexplorer.util.ParserUtil;
 // reach a particular methodCall (anchor)
 public class StreamAPIUsageVisitor extends VoidVisitorAdapter<Result<StreamOperationsInfo>> {
 
-	private static final String UNKNOWN_TYPE = "UNK";
+    private static final String UNKNOWN_TYPE = "UNK";
 
-	private static final String STREAM = "stream";
-	private static final String PARALLEL_STREAM = "parallelStream";
+    private static final String STREAM = "stream";
+    private static final String PARALLEL_STREAM = "parallelStream";
 
-	public StreamAPIUsageVisitor(Filter filter) {
-		// Ignoring filter for now...
+    public StreamAPIUsageVisitor(Filter filter) {
+        // Ignoring filter for now...
 
-	}
+    }
 
-	@Override
-	public void visit(final MethodCallExpr n, final Result<StreamOperationsInfo> result) {
+    @Override
+    public void visit(final MethodCallExpr n, final Result<StreamOperationsInfo> result) {
 
-		// super.visit(n,arg);
-		List<MethodCallExpr> allExpCalls = n.findAll(MethodCallExpr.class);
+        // super.visit(n,arg);
+        List<MethodCallExpr> allExpCalls = n.findAll(MethodCallExpr.class);
 
-		// Get stream operations
-		StreamOperationsInfo info = extractStreamOperations(n, allExpCalls, STREAM);
-		if (info != null) {
-			result.add(info);
-		}
+        // Get stream operations
+        StreamOperationsInfo info = extractStreamOperations(n, allExpCalls, STREAM);
+        if (info != null) {
+            result.add(info);
+        }
 
-		// Get parallel stream operations
-		StreamOperationsInfo parallelInfo = extractStreamOperations(n, allExpCalls, PARALLEL_STREAM);
-		if (parallelInfo != null) {
-			result.add(parallelInfo);
-		}
-	}
+        // Get parallel stream operations
+        StreamOperationsInfo parallelInfo = extractStreamOperations(n, allExpCalls, PARALLEL_STREAM);
+        if (parallelInfo != null) {
+            result.add(parallelInfo);
+        }
+    }
 
-	private StreamOperationsInfo extractStreamOperations(MethodCallExpr methodCall, List<MethodCallExpr> allExpCalls,
-			String streamAnchor) {
+    private StreamOperationsInfo extractStreamOperations(MethodCallExpr methodCall, List<MethodCallExpr> allExpCalls,
+                                                         String streamAnchor) {
 
-		// Find if there is a stream method call in the chain
+        // Find if there is a stream method call in the chain
 		Optional<MethodCallExpr> streamMethodCall = allExpCalls.stream()
-				.filter(x -> x.getNameAsString().equals(streamAnchor)).findAny();
+				.filter(x -> returnsStreamType(x)).findAny();
 
-		if (streamMethodCall.isPresent()) { // Stream method confirmed
+        if (streamMethodCall.isPresent()) { // Stream method confirmed
 
-			StreamOperationsInfoBuilder builder = StreamOperationsInfo.builder();
+            StreamOperationsInfoBuilder builder = StreamOperationsInfo.builder();
 
-			// FullStreamCall
-			builder.fullStreamOperation(methodCall.toString());
-			
-			// Class Name
-			builder.className(ParserUtil.retrieveClass(methodCall));
-			
-			// Package Name
-			builder.packageName(ParserUtil.retrievePackageName(methodCall));
+            // FullStreamCall
+            builder.fullStreamOperation(methodCall.toString());
 
-			// Position (line + col)
-			builder.lineNumber(ParserUtil.getLineNumber(methodCall));
-			builder.columnNumber(ParserUtil.getColumn(methodCall));
+            // Class Name
+            builder.className(ParserUtil.retrieveClass(methodCall));
 
-			// Stream chain operations
-			StringListInfo chain = extractMethodChain(methodCall, streamAnchor);
-			builder.streamOperations(chain);
+            // Package Name
+            builder.packageName(ParserUtil.retrievePackageName(methodCall));
 
-			// Source type
-			Optional<Expression> scope = streamMethodCall.get().getScope();
-			String type = extractType(scope);
-			builder.sourceType(type);
+            // Position (line + col)
+            builder.lineNumber(ParserUtil.getLineNumber(methodCall));
+            builder.columnNumber(ParserUtil.getColumn(methodCall));
 
-			return builder.build();
-		}
+            // Stream chain operations
+            StringListInfo chain = extractMethodChain(methodCall, streamAnchor);
+            builder.streamOperations(chain);
 
-		return null;
-	}
+            // Source type
+            Optional<Expression> scope = streamMethodCall.get().getScope();
+            String type = extractType(scope);
+            builder.sourceType(type);
 
-	private StringListInfo extractMethodChain(MethodCallExpr expr, String streamAnchor) {
+            return builder.build();
+        }
 
-		List<MethodCallExpr> allMethodCalls = expr.findAll(MethodCallExpr.class);
+        return null;
+    }
 
-		List<String> streamChain = allMethodCalls.stream().takeWhile(x -> !x.getNameAsString().equals(streamAnchor))
-				.map(x -> x.getNameAsString()).collect(Collectors.toList());
+    private boolean returnsStreamType(MethodCallExpr methodCallExpr) {
 
-		// We add the stream/parallelstream as our search above does not
-		// cover the stream method itself (takeWhile)
-		streamChain.add(streamAnchor);
+        try {
+            ResolvedMethodDeclaration resolve = methodCallExpr.resolve();
+            String describe = resolve.getReturnType().describe();
+            // Return
+            return describe.startsWith("java.util.stream");
 
-		// We need to reverse here as we walk
-		// from the last operation -> stream
-		Collections.reverse(streamChain);
+        } catch (Exception e) {
+            // Trace level as this is expected to happen quite often
+            Logger.trace(String.format("Error while identifying the " +
+                    "types for the method call = %s", methodCallExpr.toString()));
 
-		return new StringListInfo(streamChain);
-	}
+        }
 
-	private String extractType(Optional<Expression> scope) {
-		try {
-			if (scope.isPresent()) {
+        return methodCallExpr.getNameAsString().equals("stream")
+                || methodCallExpr.getNameAsString().equals("parallelStream");
 
-				Expression expression = scope.get();
-				ResolvedType resolvedType = expression.calculateResolvedType();
+    }
 
-				// ResolvedType rt = JavaParserFacade.get(solver).getType(scope.get());
-				return resolvedType.describe();
-			}
-		} catch (Exception e) {
-			// Trace level as this is expected to happen quite often
-			Logger.trace(String.format("Error while identifying the types for the scope = %s", scope.get().toString()));
-		}
-		return UNKNOWN_TYPE;
-	}
+    private StringListInfo extractMethodChain(MethodCallExpr expr, String streamAnchor) {
+
+        List<MethodCallExpr> allMethodCalls = expr.findAll(MethodCallExpr.class);
+
+        List<String> streamChain = allMethodCalls.stream().takeWhile(x -> !x.getNameAsString().equals(streamAnchor))
+                .map(x -> x.getNameAsString()).collect(Collectors.toList());
+
+        // We add the stream/parallelstream as our search above does not
+        // cover the stream method itself (takeWhile)
+        streamChain.add(streamAnchor);
+
+        // We need to reverse here as we walk
+        // from the last operation -> stream
+        Collections.reverse(streamChain);
+
+        return new StringListInfo(streamChain);
+    }
+
+    private String extractType(Optional<Expression> scope) {
+        try {
+            if (scope.isPresent()) {
+
+                Expression expression = scope.get();
+                ResolvedType resolvedType = expression.calculateResolvedType();
+
+                // ResolvedType rt = JavaParserFacade.get(solver).getType(scope.get());
+                return resolvedType.describe();
+            }
+        } catch (Exception e) {
+            // Trace level as this is expected to happen quite often
+            Logger.trace(String.format("Error while identifying the types for the scope = %s", scope.get().toString()));
+        }
+        return UNKNOWN_TYPE;
+    }
 
 }

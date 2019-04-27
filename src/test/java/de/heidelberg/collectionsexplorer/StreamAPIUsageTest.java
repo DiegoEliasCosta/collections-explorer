@@ -3,7 +3,10 @@ package de.heidelberg.collectionsexplorer;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
 
@@ -21,21 +24,20 @@ public class StreamAPIUsageTest {
 
 	String classA = new String("package de.heidelberg.collectionsexplorer.examples;" 
 			+ "import java.util.HashMap;"
-			+ "import java.util.Map;" + "import java.util.Collectors;" 
+			+ "import java.util.Map;"
+			+ "import java.util.Collectors;"
 			+ "public class ClassA {"
 			+ "	private Map<String, Integer> map = new HashMap<String, Integer>();" 
 			+ "   private void method() {"
-			+ "   	map.stream().filter(x -> x == 0).collect(Collectors::tolist);" 
+			+ "   	map.values().stream().filter(x -> x == 0).collect(Collectors.toList());"
 			+ "	 }" 
 			+ "}");
+
 
 	@Test
 	public void parsingClassAStreamAPIUsage() {
 
 		try {
-			CompilationUnit compilationUnit = JavaParser.parse(classA);
-			Result<StreamOperationsInfo> result = new Result<>("");
-
 			// Set up a minimal type solver that only looks at the classes used to run this
 			// sample.
 			CombinedTypeSolver combinedTypeSolver = new CombinedTypeSolver();
@@ -44,6 +46,9 @@ public class StreamAPIUsageTest {
 			// Configure JavaParser to use type resolution
 			JavaSymbolSolver symbolSolver = new JavaSymbolSolver(combinedTypeSolver);
 			JavaParser.getStaticConfiguration().setSymbolResolver(symbolSolver);
+
+			CompilationUnit compilationUnit = JavaParser.parse(classA);
+			Result<StreamOperationsInfo> result = new Result<>("");
 
 			compilationUnit.accept(new StreamAPIUsageVisitor(Filter.NO_FILTER), result);
 
