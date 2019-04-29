@@ -55,10 +55,10 @@ public class StreamAPIUsageTest {
 			StreamOperationsInfo entries = result.getEntries().get(0);
 			
 			List<String> listedInfo = entries.getStreamOperations().getListedInfo();
-			assertEquals(3, listedInfo.size());
-			assertEquals(listedInfo.get(0), "stream");
-			assertEquals(listedInfo.get(1), "filter");
-			assertEquals(listedInfo.get(2), "collect");
+			assertEquals(5, listedInfo.size());
+			assertEquals("stream", listedInfo.get(2));
+			assertEquals("filter", listedInfo.get(3));
+			assertEquals("collect", listedInfo.get(4));
 
 			assertEquals("de.heidelberg.collectionsexplorer.examples", entries.getPackageName());
 			

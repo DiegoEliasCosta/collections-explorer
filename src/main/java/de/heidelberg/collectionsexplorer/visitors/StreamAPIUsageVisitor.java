@@ -44,20 +44,14 @@ public class StreamAPIUsageVisitor extends VoidVisitorAdapter<Result<StreamOpera
         List<MethodCallExpr> allExpCalls = n.findAll(MethodCallExpr.class);
 
         // Get stream operations
-        StreamOperationsInfo info = extractStreamOperations(n, allExpCalls, STREAM);
+        StreamOperationsInfo info = extractStreamOperations(n, allExpCalls);
         if (info != null) {
             result.add(info);
         }
 
-        // Get parallel stream operations
-        StreamOperationsInfo parallelInfo = extractStreamOperations(n, allExpCalls, PARALLEL_STREAM);
-        if (parallelInfo != null) {
-            result.add(parallelInfo);
-        }
     }
 
-    private StreamOperationsInfo extractStreamOperations(MethodCallExpr methodCall, List<MethodCallExpr> allExpCalls,
-                                                         String streamAnchor) {
+    private StreamOperationsInfo extractStreamOperations(MethodCallExpr methodCall, List<MethodCallExpr> allExpCalls) {
 
         // Find if there is a stream method call in the chain
 		Optional<MethodCallExpr> streamMethodCall = allExpCalls.stream()
@@ -81,7 +75,7 @@ public class StreamAPIUsageVisitor extends VoidVisitorAdapter<Result<StreamOpera
             builder.columnNumber(ParserUtil.getColumn(methodCall));
 
             // Stream chain operations
-            StringListInfo chain = extractMethodChain(methodCall, streamAnchor);
+            StringListInfo chain = extractMethodChain(methodCall);
             builder.streamOperations(chain);
 
             // Source type
@@ -115,16 +109,18 @@ public class StreamAPIUsageVisitor extends VoidVisitorAdapter<Result<StreamOpera
 
     }
 
-    private StringListInfo extractMethodChain(MethodCallExpr expr, String streamAnchor) {
+    private StringListInfo extractMethodChain(MethodCallExpr expr) {
 
         List<MethodCallExpr> allMethodCalls = expr.findAll(MethodCallExpr.class);
 
-        List<String> streamChain = allMethodCalls.stream().takeWhile(x -> !x.getNameAsString().equals(streamAnchor))
+        // Current implementation takes every single method call even the ones
+        // not related to stream -> This needs to be filtered later
+        List<String> streamChain = allMethodCalls.stream()
                 .map(x -> x.getNameAsString()).collect(Collectors.toList());
 
         // We add the stream/parallelstream as our search above does not
         // cover the stream method itself (takeWhile)
-        streamChain.add(streamAnchor);
+        //streamChain.add(methodCallAnchor.getNameAsString());
 
         // We need to reverse here as we walk
         // from the last operation -> stream
