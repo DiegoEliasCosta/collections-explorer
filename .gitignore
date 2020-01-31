@@ -35,3 +35,7 @@ scripts/\.idea/
 src/test/resources/de/heidelberg/collectionsexplorer/writable/test\.csv
 
 collections-explorer\.iml
+
+.factorypath
+
+.vscode/

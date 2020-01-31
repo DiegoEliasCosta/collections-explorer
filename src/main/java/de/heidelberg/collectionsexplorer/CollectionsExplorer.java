@@ -1,27 +1,27 @@
 package de.heidelberg.collectionsexplorer;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.EnumMap;
-import java.util.List;
-import java.util.Map.Entry;
-import java.util.concurrent.Callable;
-
-import org.pmw.tinylog.Logger;
-
 import com.github.javaparser.JavaParser;
 import com.github.javaparser.symbolsolver.JavaSymbolSolver;
 import com.github.javaparser.symbolsolver.resolution.typesolvers.CombinedTypeSolver;
 import com.github.javaparser.symbolsolver.resolution.typesolvers.JarTypeSolver;
 import com.github.javaparser.symbolsolver.resolution.typesolvers.JavaParserTypeSolver;
 import com.github.javaparser.symbolsolver.resolution.typesolvers.ReflectionTypeSolver;
-
 import de.heidelberg.collectionsexplorer.beans.GenericInfo;
 import de.heidelberg.collectionsexplorer.context.Report;
 import de.heidelberg.collectionsexplorer.context.VisitorReportContext;
 import de.heidelberg.collectionsexplorer.context.VisitorType;
 import de.heidelberg.collectionsexplorer.writer.CsvWriter;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.EnumMap;
+import java.util.List;
+import java.util.Map.Entry;
+import java.util.concurrent.Callable;
+import java.util.stream.Collectors;
+import org.pmw.tinylog.Logger;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
@@ -52,40 +52,43 @@ public class CollectionsExplorer implements Callable<Void> {
 	@Option(names = { "-v", "--verbose" }, description = "Be verbose.")
 	private boolean verbose = false;
 
-	@Option(arity = "0..*", names = {"-filter" }, 
-			description = "Use this to filter the specific types to be inspected")
+	@Option(names = {
+			"-fileslisted" }, description = "Tells Collection Explorer to parse the first parameter as a text file containing all java files (one per line)")
+	private boolean filesListed = false;
+
+	@Option(arity = "0..*", names = {
+			"-filter" }, description = "Use this to filter the specific types to be inspected")
 	private String[] filters;
 
-	@Option(arity = "1", names = {"-out" }, paramLabel = "out", 
-			description = "Directory where the report will be saved")
+	@Option(arity = "1", names = {
+			"-out" }, paramLabel = "out", description = "Directory where the report will be saved")
 	private File outputDirectory;
 
 	/**
-	 *  VISITORS PARAMETERS
+	 * VISITORS PARAMETERS
 	 */
-	@Option(arity = "0", names = {"-var" }, paramLabel = "var", 
-			description = "Analyze every variable declaration that matches the filter.")
+	@Option(arity = "0", names = {
+			"-var" }, paramLabel = "var", description = "Analyze every variable declaration that matches the filter.")
 	private boolean inspectVarDeclaration = false;
 
-	@Option(arity = "0", names = {"-new" }, paramLabel = "new", 
-			description = "Analyze every object instantiation that matches the filter.")
+	@Option(arity = "0", names = {
+			"-new" }, paramLabel = "new", description = "Analyze every object instantiation that matches the filter.")
 	private boolean inspectObjCreation = false;
 
-	@Option(arity = "0", names = {"-import" }, paramLabel = "import", 
-			description = "Analyze every import declaration that matches the filter.")
+	@Option(arity = "0", names = {
+			"-import" }, paramLabel = "import", description = "Analyze every import declaration that matches the filter.")
 	private boolean inspectImportDeclaration = false;
 
-	@Option(arity = "0", names = {"-stream" }, paramLabel = "stream", 
-			description = "Analyze every stream methods	 declaration using the filter.")
+	@Option(arity = "0", names = {
+			"-stream" }, paramLabel = "stream", description = "Analyze every stream methods	 declaration using the filter.")
 	private boolean inspectStreamMethodDeclaration = false;
-	
+
 	/**
 	 * TYPE SOLVER PARAMETERS
 	 */
-	@Option(arity = "0", names = {"-jar" }, paramLabel = "jar", 
-			description = "Jar file to help resolve symbol types (stream usage).")
+	@Option(arity = "0", names = {
+			"-jar" }, paramLabel = "jar", description = "Jar file to help resolve symbol types (stream usage).")
 	private File jarFile;
-	
 
 	public static void main(String[] args) {
 
@@ -106,7 +109,7 @@ public class CollectionsExplorer implements Callable<Void> {
 		} else {
 			Logger.info(String.format("%d filters configured", filters.length));
 			for (int i = 0; i < filters.length; i++) {
-				Logger.info(String.format("Filter %d -< %s", i + 1, filters[i]));
+				Logger.info(String.format("Filter %d - %s", i + 1, filters[i]));
 				filter.add(filters[i]);
 			}
 		}
@@ -119,19 +122,33 @@ public class CollectionsExplorer implements Callable<Void> {
 
 			List<File> filesList = new ArrayList<>();
 			for (File dir : inputDirectories) {
-				Logger.info(String.format("Adding directory %s", dir.getPath()));
-				filesList.addAll(FileTraverser.visitAllDirsAndFiles(dir, JAVA_EXTENSION));
 
-				CombinedTypeSolver solver = new CombinedTypeSolver(
-						new JavaParserTypeSolver(dir), // Needs an accurate root directory THIS IS VERY SLOW
-						new ReflectionTypeSolver());   // Works for types we also use here (java.util, java.lang...)
+				if (filesListed) {
 
-				
-				if(jarFile != null) {
+					File textFile = dir;
+
+					Logger.info(String.format(
+							"First parameter %s will be interpreted as a text file with all Java files to be parsed",
+							textFile));
+					List<String> result = Files.readAllLines(Paths.get(textFile.getAbsolutePath()));
+					// String path -> File
+					filesList.addAll(result.stream().map(File::new).collect(Collectors.toList()));
+
+				} else {
+					Logger.info(String.format("Adding directory %s", dir.getPath()));
+					filesList.addAll(FileTraverser.visitAllDirsAndFiles(dir, JAVA_EXTENSION));
+				}
+
+				CombinedTypeSolver solver = new CombinedTypeSolver(new JavaParserTypeSolver(dir), // Needs an accurate
+																									// root directory
+																									// THIS IS VERY SLOW
+						new ReflectionTypeSolver()); // Works for types we also use here (java.util, java.lang...)
+
+				if (jarFile != null) {
 					solver.add(new JarTypeSolver(jarFile));
 					Logger.info(String.format("Jar file %s specified for the type solver.", jarFile));
 				}
-				
+
 				// Configure JavaParser to use type resolution
 				JavaSymbolSolver symbolSolver = new JavaSymbolSolver(solver);
 				JavaParser.getStaticConfiguration().setSymbolResolver(symbolSolver);
