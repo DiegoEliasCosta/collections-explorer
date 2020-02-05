@@ -137,21 +137,24 @@ public class CollectionsExplorer implements Callable<Void> {
 				} else {
 					Logger.info(String.format("Adding directory %s", dir.getPath()));
 					filesList.addAll(FileTraverser.visitAllDirsAndFiles(dir, JAVA_EXTENSION));
-				}
 
-				CombinedTypeSolver solver = new CombinedTypeSolver(new JavaParserTypeSolver(dir), // Needs an accurate
+					// FIXME: Integrate this with the file list as well
+					CombinedTypeSolver solver = new CombinedTypeSolver(new JavaParserTypeSolver(dir), // Needs an accurate
 																									// root directory
 																									// THIS IS VERY SLOW
 						new ReflectionTypeSolver()); // Works for types we also use here (java.util, java.lang...)
 
-				if (jarFile != null) {
-					solver.add(new JarTypeSolver(jarFile));
-					Logger.info(String.format("Jar file %s specified for the type solver.", jarFile));
-				}
 
-				// Configure JavaParser to use type resolution
-				JavaSymbolSolver symbolSolver = new JavaSymbolSolver(solver);
-				JavaParser.getStaticConfiguration().setSymbolResolver(symbolSolver);
+					if (jarFile != null) {
+						solver.add(new JarTypeSolver(jarFile));
+						Logger.info(String.format("Jar file %s specified for the type solver.", jarFile));
+					}
+	
+					// Configure JavaParser to use type resolution
+					JavaSymbolSolver symbolSolver = new JavaSymbolSolver(solver);
+					JavaParser.getStaticConfiguration().setSymbolResolver(symbolSolver);
+
+				}			
 
 				Logger.info(String.format("%d files found...", filesList.size()));
 				processor.process(filesList);
