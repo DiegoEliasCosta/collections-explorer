@@ -39,3 +39,7 @@ collections-explorer\.iml
 .factorypath
 
 .vscode/
+
+.DS_Store
+
+log.txt

@@ -10,6 +10,7 @@ import java.util.List;
 import org.pmw.tinylog.Logger;
 
 import com.github.javaparser.JavaParser;
+import com.github.javaparser.StaticJavaParser;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.symbolsolver.model.resolution.TypeSolver;
 
@@ -60,7 +61,7 @@ public class FileProcessor {
 		try(FileInputStream in = new FileInputStream(f.getAbsolutePath())){
 			CompilationUnit cu;
 			try {
-				cu = JavaParser.parse(in, Charset.forName(UTF_8));
+				cu = StaticJavaParser.parse(in, Charset.forName(UTF_8));
 				
 				for(VisitorReportContext<?> ctx : visitorCtxs.values()) {
 					ctx.inspect(cu, f.getAbsolutePath());

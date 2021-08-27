@@ -1,6 +1,8 @@
 package de.heidelberg.collectionsexplorer;
 
 import com.github.javaparser.JavaParser;
+import com.github.javaparser.ParserConfiguration;
+import com.github.javaparser.StaticJavaParser;
 import com.github.javaparser.symbolsolver.JavaSymbolSolver;
 import com.github.javaparser.symbolsolver.resolution.typesolvers.CombinedTypeSolver;
 import com.github.javaparser.symbolsolver.resolution.typesolvers.JarTypeSolver;
@@ -150,9 +152,11 @@ public class CollectionsExplorer implements Callable<Void> {
 						Logger.info(String.format("Jar file %s specified for the type solver.", jarFile));
 					}
 	
+					// FIXME: Find a way to incorporate the solver in the latest version of Java parser
 					// Configure JavaParser to use type resolution
-					JavaSymbolSolver symbolSolver = new JavaSymbolSolver(solver);
-					JavaParser.getStaticConfiguration().setSymbolResolver(symbolSolver);
+					// JavaSymbolSolver symbolSolver = new JavaSymbolSolver(solver);
+					// ParserConfiguration config = StaticJavaParser.getConfiguration();
+					// config.setSymbolResolver(symbolSolver);
 
 				}			
 
@@ -171,7 +175,8 @@ public class CollectionsExplorer implements Callable<Void> {
 				VisitorType visitorType = entry.getKey();
 				VisitorReportContext<?> context = entry.getValue();
 
-				Logger.info(String.format("Writing the context found with %s analysis", visitorType));
+				int size = context.getReport().getResults().size();
+				Logger.info(String.format("Writing the context found with %s analysis - %d entries", visitorType, size));
 
 				// Handle output dir option
 				File outputFile;
@@ -180,6 +185,8 @@ public class CollectionsExplorer implements Callable<Void> {
 				} else {
 					outputFile = new File(outputDirectory + visitorType.outputFile);
 				}
+
+				Logger.info(String.format("Writing the report at %s", outputFile));
 
 				// Writ in a CSV file
 				CsvWriter.writeInfo(outputFile, formatToWrite(context.getReport()));
